@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: parasol-insurance-secured-push
+  namespace: {{ .Values.namespace }}
+spec:
+  params:
+    - name: git-revision
+      type: string
+  workspaces:
+    - name: source
+    - name: basic-auth
+    - name: dockerconfig
+    - name: sonar-credentials
+  tasks:
+    - name: clone-source
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: URL
+          value: "https://{{ .Values.gitlab.host }}/parasol/parasol-insurance.git"
+        - name: REVISION
+          value: $(params.git-revision)
+        - name: SSL_VERIFY
+          value: "false"
+      workspaces:
+        - name: output
+          workspace: source
+        - name: basic-auth
+          workspace: basic-auth
+    - name: build-and-push
+      runAfter:
+        - clone-source
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}:latest"
+        - name: DOCKERFILE
+          value: Containerfile
+        - name: TLSVERIFY
+          value: "false"
+        - name: STORAGE_DRIVER
+          value: vfs
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+    - name: sonar-scan
+      runAfter:
+        - clone-source
+      taskRef:
+        name: sonar-scan-secured
+      params:
+        - name: SONAR_HOST_URL
+          value: "{{ .Values.sonarqube.host }}"
+        - name: SONAR_PROJECT_KEY
+          value: parasol-insurance
+      workspaces:
+        - name: source
+          workspace: source
+        - name: sonar-credentials
+          workspace: sonar-credentials

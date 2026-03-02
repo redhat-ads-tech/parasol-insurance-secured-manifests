@@ -1,0 +1,14 @@
+namespace: parasol-insurance-secured-build
+
+gitlab:
+  host: ""
+
+registry:
+  host: ""
+  organization: parasol
+
+image:
+  name: parasol-insurance-secured
+
+sonarqube:
+  host: ""

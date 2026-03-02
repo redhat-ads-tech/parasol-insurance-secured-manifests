@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: parasol-insurance-secured-tag-promote
+  namespace: {{ .Values.namespace }}
+spec:
+  params:
+    - name: git-tag
+      type: string
+    - name: git-revision
+      type: string
+  workspaces:
+    - name: source
+    - name: basic-auth
+    - name: dockerconfig
+  tasks:
+    - name: clone-source
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: URL
+          value: "https://{{ .Values.gitlab.host }}/parasol/parasol-insurance.git"
+        - name: REVISION
+          value: $(params.git-revision)
+        - name: SSL_VERIFY
+          value: "false"
+      workspaces:
+        - name: output
+          workspace: source
+        - name: basic-auth
+          workspace: basic-auth
+    - name: build-tagged-image
+      runAfter:
+        - clone-source
+      taskRef:
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: buildah
+          - name: namespace
+            value: openshift-pipelines
+      params:
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}:$(params.git-tag)"
+        - name: DOCKERFILE
+          value: Containerfile
+        - name: TLSVERIFY
+          value: "false"
+        - name: STORAGE_DRIVER
+          value: vfs
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+    - name: open-prod-pr
+      runAfter:
+        - build-tagged-image
+      taskRef:
+        name: update-prod-manifest-secured
+      params:
+        - name: IMAGE_TAG
+          value: $(params.git-tag)
+      workspaces:
+        - name: source
+          workspace: source

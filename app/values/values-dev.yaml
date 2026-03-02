@@ -1,0 +1,7 @@
+environment: dev
+namespace: parasol-insurance-secured-dev
+
+image:
+  tag: latest
+
+replicas: 1
