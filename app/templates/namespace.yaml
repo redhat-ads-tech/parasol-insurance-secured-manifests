@@ -4,3 +4,4 @@ metadata:
   name: {{ .Values.namespace }}
   labels:
     istio.io/dataplane-mode: ambient
+    istio.io/use-waypoint: waypoint
