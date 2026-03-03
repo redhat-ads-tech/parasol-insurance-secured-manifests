@@ -17,7 +17,6 @@ spec:
     metadata:
       labels:
         app: parasol-insurance-secured
-        sidecar.istio.io/inject: "true"
     spec:
       containers:
         - name: parasol-insurance-secured

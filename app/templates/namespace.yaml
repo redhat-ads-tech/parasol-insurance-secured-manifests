@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: {{ .Values.namespace }}
   labels:
-    istio-discovery: enabled
+    istio.io/dataplane-mode: ambient
