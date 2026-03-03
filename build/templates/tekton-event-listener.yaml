@@ -47,6 +47,9 @@ metadata:
   name: parasol-insurance-secured-listener
   namespace: {{ .Values.namespace }}
 spec:
+  host: el-secured-build.{{ .Values.cluster_subdomain }}
+  port:
+    targetPort: http-listener
   to:
     kind: Service
     name: el-parasol-insurance-secured-listener

@@ -10,6 +10,8 @@ registry:
 image:
   name: parasol-insurance-secured
 
+cluster_subdomain: ""
+
 sonarqube:
   host: ""
   dashboardUrl: ""
