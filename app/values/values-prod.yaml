@@ -2,6 +2,6 @@ environment: prod
 namespace: parasol-insurance-secured-prod
 
 image:
-  tag: "latest"
+  tag: "1.0"
 
 replicas: 2
