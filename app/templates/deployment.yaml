@@ -22,6 +22,7 @@ spec:
       containers:
         - name: parasol-insurance-secured
           image: "{{ .Values.registry.host }}/parasol/parasol-insurance-secured:{{ .Values.image.tag }}"
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               protocol: TCP
