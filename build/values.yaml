@@ -12,3 +12,4 @@ image:
 
 sonarqube:
   host: ""
+  dashboardUrl: ""

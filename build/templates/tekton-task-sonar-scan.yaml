@@ -8,9 +8,15 @@ spec:
     - name: SONAR_HOST_URL
       type: string
       default: "http://sonarqube.sonarqube.svc:9000"
+    - name: SONAR_DASHBOARD_URL
+      type: string
+      default: ""
     - name: SONAR_PROJECT_KEY
       type: string
       default: "parasol-insurance"
+  results:
+    - name: SONAR_REPORT_URL
+      description: Link to the SonarQube quality report
   workspaces:
     - name: source
     - name: sonar-credentials
@@ -31,6 +37,17 @@ spec:
         SONAR_HOST_URL="$(params.SONAR_HOST_URL)"
         SONAR_PROJECT_KEY="$(params.SONAR_PROJECT_KEY)"
         SONAR_LOGIN="admin"
+
+        # Determine the external dashboard URL
+        DASHBOARD_URL="$(params.SONAR_DASHBOARD_URL)"
+        if [ -z "${DASHBOARD_URL}" ]; then
+          DASHBOARD_URL="${SONAR_HOST_URL}"
+        fi
+        REPORT_URL="${DASHBOARD_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+
+        # Write result before scan so it's available even on failure
+        echo -n "${REPORT_URL}" > $(results.SONAR_REPORT_URL.path)
+        echo "SonarQube report: ${REPORT_URL}"
 
         mvn verify sonar:sonar \
           -Dsonar.host.url="${SONAR_HOST_URL}" \
