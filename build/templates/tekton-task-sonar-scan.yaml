@@ -37,4 +37,4 @@ spec:
           -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
           -Dsonar.login="${SONAR_LOGIN}" \
           -Dsonar.password="${SONAR_PASSWORD}" \
-          -Dsonar.qualitygate.wait=false || true
+          -Dsonar.qualitygate.wait=true
