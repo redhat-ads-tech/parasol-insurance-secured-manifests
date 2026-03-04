@@ -36,6 +36,14 @@ spec:
             - name: eventTypes
               value:
                 - "Tag Push Hook"
+        - ref:
+            name: cel
+            kind: ClusterInterceptor
+          params:
+            - name: overlays
+              value:
+                - key: tag_name
+                  expression: "body.ref.split('/').last()"
       bindings:
         - ref: parasol-insurance-secured-tag-binding
       template:

@@ -6,6 +6,6 @@ metadata:
 spec:
   params:
     - name: git-tag
-      value: $(body.ref)
+      value: $(extensions.tag_name)
     - name: git-revision
       value: $(body.checkout_sha)
