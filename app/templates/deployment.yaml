@@ -53,6 +53,11 @@ spec:
                   key: database-name
             - name: POSTGRESQL_HOST
               value: parasol-db
+            - name: DEV_KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-credentials
+                  key: password
           resources:
             requests:
               cpu: 250m
