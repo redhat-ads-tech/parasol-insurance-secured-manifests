@@ -14,7 +14,7 @@ spec:
           params:
             - name: secretRef
               value:
-                secretName: gitlab-credentials
+                secretName: gitlab-webhook-secret
                 secretKey: token
             - name: eventTypes
               value:
@@ -31,7 +31,7 @@ spec:
           params:
             - name: secretRef
               value:
-                secretName: gitlab-credentials
+                secretName: gitlab-webhook-secret
                 secretKey: token
             - name: eventTypes
               value:
