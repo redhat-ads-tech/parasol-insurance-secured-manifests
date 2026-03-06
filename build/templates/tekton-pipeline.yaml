@@ -13,6 +13,7 @@ spec:
     - name: source
     - name: basic-auth
     - name: dockerconfig
+    - name: maven-cache
   tasks:
     - name: clone-source
       taskRef:
@@ -36,9 +37,19 @@ spec:
           workspace: source
         - name: basic-auth
           workspace: basic-auth
-    - name: build-tagged-image
+    - name: maven-build
       runAfter:
         - clone-source
+      taskRef:
+        name: maven-build-secured
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-cache
+          workspace: maven-cache
+    - name: build-tagged-image
+      runAfter:
+        - maven-build
       taskRef:
         resolver: cluster
         params:
