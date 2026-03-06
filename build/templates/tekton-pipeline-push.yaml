@@ -12,6 +12,7 @@ spec:
     - name: basic-auth
     - name: dockerconfig
     - name: sonar-credentials
+    - name: maven-cache
   tasks:
     - name: clone-source
       taskRef:
@@ -35,6 +36,35 @@ spec:
           workspace: source
         - name: basic-auth
           workspace: basic-auth
+    - name: maven-build
+      runAfter:
+        - clone-source
+      taskRef:
+        name: maven-build-secured
+      workspaces:
+        - name: source
+          workspace: source
+        - name: maven-cache
+          workspace: maven-cache
+    - name: sonar-scan
+      runAfter:
+        - maven-build
+      taskRef:
+        name: sonar-scan-secured
+      params:
+        - name: SONAR_HOST_URL
+          value: "{{ .Values.sonarqube.host }}"
+        - name: SONAR_DASHBOARD_URL
+          value: "{{ .Values.sonarqube.dashboardUrl }}"
+        - name: SONAR_PROJECT_KEY
+          value: parasol-insurance
+      workspaces:
+        - name: source
+          workspace: source
+        - name: sonar-credentials
+          workspace: sonar-credentials
+        - name: maven-cache
+          workspace: maven-cache
     - name: build-and-push
       runAfter:
         - sonar-scan
@@ -71,20 +101,3 @@ spec:
           value: parasol-insurance-secured
         - name: NAMESPACE
           value: parasol-insurance-secured-dev
-    - name: sonar-scan
-      runAfter:
-        - clone-source
-      taskRef:
-        name: sonar-scan-secured
-      params:
-        - name: SONAR_HOST_URL
-          value: "{{ .Values.sonarqube.host }}"
-        - name: SONAR_DASHBOARD_URL
-          value: "{{ .Values.sonarqube.dashboardUrl }}"
-        - name: SONAR_PROJECT_KEY
-          value: parasol-insurance
-      workspaces:
-        - name: source
-          workspace: source
-        - name: sonar-credentials
-          workspace: sonar-credentials
