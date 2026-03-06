@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: waypoint-monitor
+  namespace: {{ .Values.namespace }}
+spec:
+  podMetricsEndpoints:
+    - path: /stats/prometheus
+      port: metrics
+  selector:
+    matchLabels:
+      gateway.istio.io/managed: istio.io-mesh-controller
