@@ -6,4 +6,4 @@ metadata:
 spec:
   params:
     - name: git-revision
-      value: $(body.checkout_sha)
+      value: $(body.after)
