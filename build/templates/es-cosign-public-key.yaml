@@ -1,0 +1,21 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cosign-public-key
+  namespace: {{ .Values.namespace }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: cosign-public-key
+    creationPolicy: Owner
+    template:
+      data:
+        cosign.pub: "{{`{{ .public_key }}`}}"
+  data:
+    - secretKey: public_key
+      remoteRef:
+        key: secrets/rhtas/cosign-public-key
+        property: value

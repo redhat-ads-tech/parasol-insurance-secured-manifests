@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: parasol-insurance-secured-validate
+  namespace: {{ .Values.namespace }}
+spec:
+  params:
+    - name: image
+      type: string
+    - name: git-tag
+      type: string
+  workspaces:
+    - name: source
+  tasks:
+    - name: wait-for-attestation
+      taskRef:
+        name: wait-for-attestation-secured
+      params:
+        - name: IMAGE
+          value: $(params.image)
+    - name: conforma-validate
+      runAfter:
+        - wait-for-attestation
+      taskRef:
+        name: conforma-validate-secured
+      params:
+        - name: IMAGE
+          value: $(params.image)
+    - name: open-prod-pr
+      runAfter:
+        - conforma-validate
+      taskRef:
+        name: update-prod-manifest-secured
+      params:
+        - name: IMAGE_TAG
+          value: $(params.git-tag)
+      workspaces:
+        - name: source
+          workspace: source

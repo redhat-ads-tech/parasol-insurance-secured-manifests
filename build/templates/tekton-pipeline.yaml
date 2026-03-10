@@ -9,6 +9,8 @@ spec:
       type: string
     - name: git-revision
       type: string
+    - name: tagger-email
+      type: string
   workspaces:
     - name: source
     - name: basic-auth
@@ -73,14 +75,60 @@ spec:
           workspace: source
         - name: dockerconfig
           workspace: dockerconfig
-    - name: open-prod-pr
+    - name: acs-image-scan
       runAfter:
         - build-tagged-image
       taskRef:
-        name: update-prod-manifest-secured
+        name: acs-image-scan-secured
       params:
-        - name: IMAGE_TAG
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}:$(params.git-tag)"
+    - name: acs-image-check
+      runAfter:
+        - build-tagged-image
+      taskRef:
+        name: acs-image-check-secured
+      params:
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}:$(params.git-tag)"
+    - name: generate-sbom
+      runAfter:
+        - acs-image-scan
+        - acs-image-check
+      taskRef:
+        name: generate-sbom-secured
+      params:
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}:$(params.git-tag)"
+        - name: SOURCE_NAME
+          value: "parasol-insurance-secured"
+        - name: SOURCE_VERSION
           value: $(params.git-tag)
       workspaces:
         - name: source
           workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+    - name: upload-sbom-to-tpa
+      runAfter:
+        - generate-sbom
+      taskRef:
+        name: upload-sbom-to-tpa-secured
+      params:
+        - name: LABEL_DEV
+          value: $(params.tagger-email)
+        - name: LABEL_COMPONENT
+          value: "parasol-insurance-secured"
+      workspaces:
+        - name: source
+          workspace: source
+    - name: trigger-validation
+      runAfter:
+        - upload-sbom-to-tpa
+      taskRef:
+        name: trigger-validation-secured
+      params:
+        - name: IMAGE
+          value: "{{ .Values.registry.host }}/{{ .Values.registry.organization }}/{{ .Values.image.name }}@$(tasks.build-tagged-image.results.IMAGE_DIGEST)"
+        - name: GIT_TAG
+          value: $(params.git-tag)

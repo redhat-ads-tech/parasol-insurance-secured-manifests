@@ -9,3 +9,5 @@ spec:
       value: $(extensions.tag_name)
     - name: git-revision
       value: $(body.checkout_sha)
+    - name: tagger-email
+      value: $(body.user_email)

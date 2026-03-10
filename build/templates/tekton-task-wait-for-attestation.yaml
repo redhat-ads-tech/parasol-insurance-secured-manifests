@@ -1,0 +1,77 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: wait-for-attestation-secured
+  namespace: {{ .Values.namespace }}
+spec:
+  description: >-
+    Wait for Tekton Chains to push the PipelineRun attestation for an image.
+    Polls using cosign verify-attestation until the attestation is available.
+  params:
+    - name: IMAGE
+      type: string
+      description: Full image reference (registry/org/name@sha256:digest)
+    - name: CLI_SERVER
+      type: string
+      description: TAS cli-server URL for downloading cosign
+      default: "https://cli-server-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+    - name: TUF_URL
+      type: string
+      description: TUF mirror URL for cosign initialize
+      default: "https://tuf-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+    - name: REKOR_URL
+      type: string
+      description: Rekor transparency log URL
+      default: "https://rekor-server-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+    - name: TIMEOUT
+      type: string
+      description: Maximum time to wait in seconds
+      default: "300"
+    - name: INTERVAL
+      type: string
+      description: Polling interval in seconds
+      default: "10"
+  volumes:
+    - name: cosign-public-key
+      secret:
+        secretName: cosign-public-key
+  steps:
+    - name: wait
+      image: registry.access.redhat.com/ubi9-minimal:latest
+      volumeMounts:
+        - name: cosign-public-key
+          mountPath: /etc/cosign
+          readOnly: true
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        unset SSL_CERT_DIR
+
+        microdnf install -y gzip --nodocs && microdnf clean all
+
+        echo "Installing cosign from cli-server..."
+        curl -sL "$(params.CLI_SERVER)/clients/linux/cosign-amd64.gz" | gunzip > /tmp/cosign
+        chmod +x /tmp/cosign
+
+        echo "Initializing TUF root..."
+        export TUF_ROOT=/tmp/tuf
+        /tmp/cosign initialize --mirror="$(params.TUF_URL)" --root="$(params.TUF_URL)/root.json"
+
+        echo "Waiting for PipelineRun attestation on $(params.IMAGE)..."
+        ELAPSED=0
+        while [ "$ELAPSED" -lt "$(params.TIMEOUT)" ]; do
+          if /tmp/cosign verify-attestation \
+            --key /etc/cosign/cosign.pub \
+            --rekor-url "$(params.REKOR_URL)" \
+            --type slsaprovenance \
+            "$(params.IMAGE)" > /dev/null 2>&1; then
+            echo "Attestation found after ${ELAPSED}s"
+            exit 0
+          fi
+          echo "No attestation yet (${ELAPSED}s elapsed), retrying in $(params.INTERVAL)s..."
+          sleep "$(params.INTERVAL)"
+          ELAPSED=$((ELAPSED + $(params.INTERVAL)))
+        done
+
+        echo "ERROR: Timed out waiting for attestation after $(params.TIMEOUT)s" >&2
+        exit 1

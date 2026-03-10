@@ -1,0 +1,126 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: conforma-validate-secured
+  namespace: {{ .Values.namespace }}
+  annotations:
+    task.output.location: logs
+    task.results.format: application/json
+    task.results.type: ec
+    task.results.key: CONFORMA_OUTPUT
+    task.results.container: step-report
+spec:
+  description: >-
+    Validate an image against enterprise policies using Conforma (Enterprise Contract).
+    Checks image signature, attestation, and policy compliance.
+  params:
+    - name: IMAGE
+      type: string
+      description: Full image reference (registry/org/name@sha256:digest)
+    - name: CLI_SERVER
+      type: string
+      description: TAS cli-server URL for downloading cosign
+      default: "https://cli-server-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+    - name: TUF_URL
+      type: string
+      description: TUF mirror URL for cosign initialize
+      default: "https://tuf-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+    - name: REKOR_URL
+      type: string
+      description: Rekor transparency log URL
+      default: "https://rekor-server-trusted-artifact-signer.{{ .Values.cluster_subdomain }}"
+  results:
+    - name: CONFORMA_OUTPUT
+      description: Conforma validation result summary
+  volumes:
+    - name: cosign-public-key
+      secret:
+        secretName: cosign-public-key
+    - name: ec-output
+      emptyDir: {}
+  steps:
+    - name: validate
+      image: registry.access.redhat.com/ubi9-minimal:latest
+      volumeMounts:
+        - name: cosign-public-key
+          mountPath: /etc/cosign
+          readOnly: true
+        - name: ec-output
+          mountPath: /tmp/ec-output
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        unset SSL_CERT_DIR
+
+        microdnf install -y gzip --nodocs && microdnf clean all
+
+        echo "Installing cosign from cli-server..."
+        curl -sL "$(params.CLI_SERVER)/clients/linux/cosign-amd64.gz" | gunzip > /tmp/cosign
+        chmod +x /tmp/cosign
+
+        echo "Initializing TUF root..."
+        export TUF_ROOT=/tmp/tuf
+        /tmp/cosign initialize --mirror="$(params.TUF_URL)" --root="$(params.TUF_URL)/root.json"
+
+        echo "Installing conforma..."
+        curl -sL https://github.com/conforma/cli/releases/download/v0.8.123/ec_linux_amd64 -o /tmp/ec
+        chmod +x /tmp/ec
+
+        cat > /tmp/policy.yaml <<'POLICY'
+        sources:
+          - policy:
+              - "oci::quay.io/enterprise-contract/ec-release-policy:latest"
+            config:
+              include:
+                - "@minimal"
+              exclude:
+                - "base_image_registries.allowed_registries_provided"
+                - "base_image_registries.base_image_info_found"
+                - "cve.cve_results_found"
+                - "provenance_materials.git_clone_task_found"
+                - "sbom.found"
+                - "slsa_source_correlated.attested_source_code_reference"
+                - "slsa_source_correlated.source_code_reference_provided"
+                - "slsa_source_version_controlled.materials_format_okay"
+        POLICY
+
+        echo "Validating $(params.IMAGE)..."
+        /tmp/ec validate image \
+          --image "$(params.IMAGE)" \
+          --public-key /etc/cosign/cosign.pub \
+          --policy /tmp/policy.yaml \
+          --rekor-url "$(params.REKOR_URL)" \
+          --output json=/tmp/ec-output/result.json \
+          --output text=/tmp/ec-output/result.txt \
+          --show-successes \
+          --info
+
+        echo "Conforma validation passed"
+    - name: summary
+      image: registry.access.redhat.com/ubi9-minimal:latest
+      volumeMounts:
+        - name: ec-output
+          mountPath: /tmp/ec-output
+      script: |
+        #!/usr/bin/env bash
+        cat /tmp/ec-output/result.txt
+    - name: report
+      image: registry.access.redhat.com/ubi9:latest
+      volumeMounts:
+        - name: ec-output
+          mountPath: /tmp/ec-output
+      script: |
+        #!/usr/bin/env bash
+        python3 -c "
+        import json
+        with open('/tmp/ec-output/result.json') as f:
+            data = json.load(f)
+        components = data.get('components', [])
+        for c in components:
+            successes = len(c.get('successes', []))
+            violations = len(c.get('violations', []))
+            warnings = len(c.get('warnings', []))
+            result = {'success': data.get('success', False), 'components': len(components), 'passed': successes, 'violations': violations, 'warnings': warnings}
+        print(json.dumps(result))
+        " > $(results.CONFORMA_OUTPUT.path)
+        cat /tmp/ec-output/result.json

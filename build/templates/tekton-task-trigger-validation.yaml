@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trigger-validation-secured
+  namespace: {{ .Values.namespace }}
+spec:
+  description: >-
+    Trigger the validation pipeline by creating a PipelineRun.
+    Runs fire-and-forget so the tag-promote pipeline can finish
+    and Chains can generate its attestation.
+  params:
+    - name: IMAGE
+      type: string
+      description: Full image reference (registry/org/name@sha256:digest)
+    - name: GIT_TAG
+      type: string
+      description: The git tag being promoted
+  steps:
+    - name: trigger
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        cat <<PIPELINERUN | oc create -f -
+        apiVersion: tekton.dev/v1
+        kind: PipelineRun
+        metadata:
+          generateName: parasol-insurance-secured-validate-
+          namespace: {{ .Values.namespace }}
+        spec:
+          pipelineRef:
+            name: parasol-insurance-secured-validate
+          params:
+            - name: image
+              value: "$(params.IMAGE)"
+            - name: git-tag
+              value: "$(params.GIT_TAG)"
+          workspaces:
+            - name: source
+              volumeClaimTemplate:
+                spec:
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 2Gi
+        PIPELINERUN
+
+        echo "Validation pipeline triggered"
