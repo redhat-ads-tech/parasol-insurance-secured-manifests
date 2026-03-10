@@ -28,6 +28,8 @@ spec:
         metadata:
           generateName: parasol-insurance-secured-validate-
           namespace: {{ .Values.namespace }}
+          labels:
+            backstage.io/kubernetes-id: parasol-insurance-secured
         spec:
           pipelineRef:
             name: parasol-insurance-secured-validate

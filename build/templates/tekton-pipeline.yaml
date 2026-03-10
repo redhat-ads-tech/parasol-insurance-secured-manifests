@@ -11,6 +11,10 @@ spec:
       type: string
     - name: tagger-email
       type: string
+  results:
+    - name: ACS_IMAGE_SCAN_OUTPUT
+      description: ACS vulnerability summary for Developer Hub
+      value: $(tasks.acs-image-scan.results.SCAN_OUTPUT)
   workspaces:
     - name: source
     - name: basic-auth
