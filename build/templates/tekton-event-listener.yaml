@@ -19,6 +19,12 @@ spec:
             - name: eventTypes
               value:
                 - "Push Hook"
+        - ref:
+            name: cel
+            kind: ClusterInterceptor
+          params:
+            - name: filter
+              value: "body.after != '0000000000000000000000000000000000000000'"
       bindings:
         - ref: parasol-insurance-secured-push-binding
       template:
