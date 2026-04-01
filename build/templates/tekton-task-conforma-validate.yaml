@@ -69,7 +69,7 @@ spec:
         cat > /tmp/policy.yaml <<'POLICY'
         sources:
           - policy:
-              - "oci::quay.io/enterprise-contract/ec-release-policy:latest"
+              - "oci::quay.io/enterprise-contract/ec-release-policy:git-c4e8ea6f"
             config:
               include:
                 - "@minimal"
