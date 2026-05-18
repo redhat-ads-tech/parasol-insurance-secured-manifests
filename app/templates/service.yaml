@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     app: parasol-insurance-secured
+    app.kubernetes.io/name: parasol-insurance-secured
+    app.kubernetes.io/part-of: parasol-insurance-secured-{{ .Values.environment }}
+    app.openshift.io/runtime: quarkus
 spec:
   selector:
     app: parasol-insurance-secured
