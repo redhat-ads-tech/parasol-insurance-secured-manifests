@@ -15,7 +15,7 @@ spec:
         generateName: parasol-insurance-secured-tag-promote-
         namespace: {{ .Values.namespace }}
         labels:
-          backstage.io/kubernetes-id: parasol-insurance-secured
+          app.kubernetes.io/name: parasol-insurance-secured
       spec:
         pipelineRef:
           name: parasol-insurance-secured-tag-promote
